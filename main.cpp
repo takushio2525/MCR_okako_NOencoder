@@ -32,7 +32,7 @@
     33332 // SERVO PWM period
           // 16ms   P0φ/16 = 0.48us
 #define SERVO_CENTER \
-    3040 // 3070        // 1.5ms / 0.48us - 1 = 3124   最初３０５０
+    3100 // 3070        // 1.5ms / 0.48us - 1 = 3124   最初３０５０
 // 値を足すと右　減らすと左
 // 3100
 #define HANDLE_STEP 18 // 1 degree value
@@ -858,6 +858,7 @@ void intTimer(void)
 {
     static int counter = 0; // Only variable for image process
     unsigned char b;
+    int myHandleVal;
 
     cnt1++;
     cnt_msdwritetime++;
@@ -1082,17 +1083,14 @@ void intTimer(void)
     case 11:
         // 通常トレース
         led_m(50, 1, 1, 1);
-        if (abs(allDeviation[60]) < 15 && cnt1 >= 600)
+        if (abs(allDeviation[40]) < 15 && cnt1 >= 600)
         {
             lineSkipDistance = 170;
-
-            laneAfterDistance = 50;
-            laneCounterDistance = 350; // 300
 
             if (lineflag_cross)
             {
                 pattern = 21;
-                crankDistance = 460;
+                crankDistance = 400;
 
                 crankHandleVal = 30;
 
@@ -1108,10 +1106,6 @@ void intTimer(void)
                 laneHandleVal = -28;
                 laneMotorPowerLeft = 60;
                 laneMotorPowerRight = 0;
-
-                laneCounterHandleVal = 25;
-                laneCounterMotorPowerLeft = 20;
-                laneCounterMotorPowerRight = 90;
             }
             if (lineflag_left)
             {
@@ -1119,18 +1113,15 @@ void intTimer(void)
                 laneStraightMotorPower = 40;
                 laneDistance = 400;
 
-                laneHandleVal = 20;
-                laneMotorPowerLeft = 30;
-                laneMotorPowerRight = 60;
-
-                laneCounterHandleVal = -28;
-                laneCounterMotorPowerLeft = 40;
-                laneCounterMotorPowerRight = 70;
+                laneHandleVal = 12;
+                laneMotorPowerLeft = 100;
+                laneMotorPowerRight = 100;
             }
         }
 
-        motor(80, 80);
-        handle(handleVal);
+        motor(90, 90);
+        myHandleVal = allDeviation[53] * 0.37;
+        handle(myHandleVal);
 
         if (encoder.getCourseCount() >= 1120 * 54)
         {
@@ -1150,9 +1141,9 @@ void intTimer(void)
     case 22:
         // クロスラインを読み飛ばす
 
-        motor(60, 60);
-        handle(handleVal);
-
+        motor(10, 10);
+        myHandleVal = allDeviation[53] * 0.37;
+        handle(myHandleVal);
         if (cnt1 >= lineSkipDistance && !lineflag_left && !lineflag_right)
         {
             pattern = 23;
@@ -1192,8 +1183,8 @@ void intTimer(void)
             break;
         }
         motor(60, 60);
-        handle(handleVal);
-
+        myHandleVal = allDeviation[53] * 0.37;
+        handle(myHandleVal);
         break;
 
     case 31:
@@ -1234,8 +1225,9 @@ void intTimer(void)
     case 52:
         // ハーフラインを読み飛ばす
 
-        motor(60, 60);
-        handle(handleVal);
+        motor(10, 10);
+        myHandleVal = allDeviation[53] * 0.37;
+        handle(myHandleVal);
         if (cnt1 >= lineSkipDistance && !lineflag_left && !lineflag_right)
         {
             pattern = 53;
@@ -1243,17 +1235,17 @@ void intTimer(void)
         }
         if (laneHandleVal < 0 && (lineflag_left || lineflag_cross))
         {
-            pattern = 21;
+            pattern = 22;
             break;
         }
         if (laneHandleVal > 0 && (lineflag_right || lineflag_cross))
         {
-            pattern = 21;
+            pattern = 22;
             break;
         }
         if (lineflag_cross == 1)
         {
-            pattern = 21;
+            pattern = 22;
             break;
         }
         break;
@@ -1270,8 +1262,9 @@ void intTimer(void)
             cnt1 = 0;
             break;
         }
-        motor(60, 60);
-        handle(handleVal);
+        motor(40, 40);
+        myHandleVal = allDeviation[53] * 0.37;
+        handle(myHandleVal);
         break;
 
     case 54:
@@ -1293,39 +1286,12 @@ void intTimer(void)
 
         handle(laneHandleVal);
         motor(laneMotorPowerLeft, laneCounterMotorPowerRight);
-        if (cnt1 >= laneDistance)
-        {
-
-            pattern = 56;
-            led_m(100, 0, 0, 0);
-            cnt1 = 0;
-        }
-        break;
-
-    case 56:
-
-        handle(0);
-        motor(laneStraightMotorPower, laneStraightMotorPower);
-        if (cnt1 >= laneAfterDistance)
-        {
-
-            pattern = 57;
-            led_m(100, 0, 0, 1);
-            cnt1 = 0;
-        }
-        break;
-
-    case 57:
-
-        handle(laneCounterHandleVal);
-        motor(laneCounterMotorPowerLeft, laneCounterMotorPowerRight);
-        if (cnt1 >= laneCounterDistance)
+        if (cnt1 > laneDistance)
         {
 
             pattern = 11;
-            led_m(100, 0, 0, 1);
+            led_m(100, 0, 0, 0);
             cnt1 = 0;
-            resetFlag = true;
         }
         break;
 
@@ -1455,13 +1421,13 @@ void motor(int accele_l, int accele_r)
     if (accele_l >= 0)
     {
         // forward
-        Left_motor_signal = 0;
+        Left_motor_signal = 1;
         MTU2TGRC_4 = (long)(MOTOR_PWM_CYCLE - 1) * accele_l / 100;
     }
     else
     {
         // reverse
-        Left_motor_signal = 1;
+        Left_motor_signal = 0;
         MTU2TGRC_4 = (long)(MOTOR_PWM_CYCLE - 1) * (-accele_l) / 100;
     }
 
@@ -1469,13 +1435,13 @@ void motor(int accele_l, int accele_r)
     if (accele_r >= 0)
     {
         // forward
-        Right_motor_signal = 1;
+        Right_motor_signal = 0;
         MTU2TGRD_4 = (long)(MOTOR_PWM_CYCLE - 1) * accele_r / 100;
     }
     else
     {
         // reverse
-        Right_motor_signal = 0;
+        Right_motor_signal = 1;
         MTU2TGRD_4 = (long)(MOTOR_PWM_CYCLE - 1) * (-accele_r) / 100;
     }
 }
@@ -2169,9 +2135,9 @@ void createHandleVal(void)
 
     volatile signed int limitSpeed = 100;
 
-    float straightCurveGain = 0.5;
-    float middleCurveGain = 0.8;
-    float bigCurveCurveGain = 0.8;
+    float straightCurveGain = 0.37;
+    float middleCurveGain = 0.5;
+    float bigCurveCurveGain = 0.5;
 
     float middleEncoderGain = 0.7;
     float bigEncoderGain = 0.7;
@@ -2180,12 +2146,12 @@ void createHandleVal(void)
     float bigConstEncoderGain = 25;
 
     volatile signed int straightDeviation = 0;
-    volatile signed int middleCurveDeviation = 13;
+    volatile signed int middleCurveDeviation = 100;
     volatile signed int bigCurveDeviation = 100;
 
     volatile signed int farTraceLine = 40;
     volatile signed int midTraceLine = 40;
-    volatile signed int nearTraceLine = 45;
+    volatile signed int nearTraceLine = 53;
 
     float midDifferenceGain = 0.2;
     float bigDifferenceGain = 0.7;
